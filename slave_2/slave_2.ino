@@ -1,5 +1,6 @@
 //Скетч для слейва 2
 #include <OneWire.h>// Библиотека для DS18B20
+#include <DallasTemperature.h>
 int echoPin = 9;//Эхо амн
 int trigPin = 8;//Триг пин
 int EN = 2;//Iei aey RST
@@ -7,11 +8,23 @@ String Val;//Строка которую получим
 String Str;//Строка котурую будем передавать
 int rel_1 = 0;
 int rel_2 = 0;
-OneWire  ds1(3); //Подключение к 3(D) пину
-OneWire  ds2(4); //Подключение к 4(D) пину
-OneWire  ds3(5); //Подключение к 5(D) пину
-OneWire  ds4(6); //Подключение к 6(D) пину
-OneWire  ds5(7); //Подключение к 7(D) пину
+long int mm = 0;
+float temp_1 = 0;
+float temp_2 = 0;
+float temp_3 = 0;
+float temp_4 = 0;
+float temp_5 = 0;
+
+int count = 0;
+OneWire oneWire(6); // вход датчиков 18b20
+DallasTemperature ds(&oneWire);
+
+DeviceAddress sensor1 = {0x28, 0xA8, 0x3E, 0xF9, 0x05, 0x0, 0x0, 0x12};
+DeviceAddress sensor2 = {0x28, 0xE6, 0xBD, 0x3B, 0x05, 0x0, 0x0, 0xCF};
+DeviceAddress sensor3 = {0x28, 0xE6, 0xBD, 0x3B, 0x05, 0x0, 0x0, 0xCF};
+DeviceAddress sensor4 = {0x28, 0xE6, 0xBD, 0x3B, 0x05, 0x0, 0x0, 0xCF};
+DeviceAddress sensor5 = {0x28, 0xE6, 0xBD, 0x3B, 0x05, 0x0, 0x0, 0xCF};
+
 void setup() 
 { 
   pinMode(EN, OUTPUT );
@@ -20,7 +33,7 @@ void setup()
   pinMode(trigPin, OUTPUT); 
   pinMode(echoPin, INPUT); 
   digitalWrite(13, HIGH ); 
-
+  ds.begin();
 }
 
 void loop()    
@@ -34,30 +47,35 @@ void loop()
      digitalWrite(EN, HIGH );//Включили передачу
      delay(10);  
      Serial.print("L"); 
-     int duration, mm; 
-     digitalWrite(trigPin, LOW); 
-     delayMicroseconds(2); 
-     digitalWrite(trigPin, HIGH); 
-     delayMicroseconds(10); 
-     digitalWrite(trigPin, LOW); 
-     duration = pulseIn(echoPin, HIGH); 
-     mm = duration / 5.8;
-     Str+=mm;
+     if(mm/count==-1)
+      Str+="Error";
+     else
+      Str+=mm/count;
      Str+=';';
-     //Str+=ds_(ds1);// DS18B20 Temp 1
-      Str+='-';
+     if(temp_1/count == -127.00)
+      Str+="No found";
+     else
+       Str+=temp_1/count;// DS18B20 Temp 1
      Str+=';';
-     //Str+=ds_(ds2);// DS18B20 Temp 2
-     Str+='-';
+     if(temp_2/count == -127.00)
+      Str+="No found";
+     else
+      Str+=temp_2/count;// DS18B20 Temp 2
      Str+=';';
-     //Str+=ds_(ds3);// DS18B20 Temp 3
-     Str+='-';
+     if(temp_3/count == -127.00)
+      Str+="No found";
+     else
+      Str+=temp_3/count;// DS18B20 Temp 3
      Str+=';';
-     //Str+=ds_(ds4);// DS18B20 Temp 4
-      Str+='-';
+     if(temp_4/count == -127.00)
+      Str+="No found";
+     else
+      Str+=temp_4/count;// DS18B20 Temp 4
      Str+=';';
-     //Str+=ds_(ds5);// DS18B20 Temp 5
-     Str+='-';
+     if(temp_5/count == -127.00)
+      Str+="No found";
+     else
+      Str+=temp_5/count;// DS18B20 Temp 5
      Str+=';';
      Str+=rel_1;//Iaii n naini?ii SSR_1
      Str+=';';
@@ -71,65 +89,44 @@ void loop()
       delay(10);
      Serial.print ( Str );
       delay(1000);
-    }   
-   
+      mm=0;
+      count=0;
+      temp_1=0;
+      temp_2=0;
+      temp_3=0;
+      temp_4=0;
+      temp_5=0;
+    }
+    else
+    {
+      count++;
+      int duration; 
+     digitalWrite(trigPin, LOW); 
+     delayMicroseconds(2); 
+     digitalWrite(trigPin, HIGH); 
+     delayMicroseconds(10); 
+     digitalWrite(trigPin, LOW); 
+     duration = pulseIn(echoPin, HIGH); 
+     mm += duration / 5.8;
+     ds.requestTemperatures(); // считываем температуру с датчиков
+     temp_1+=ds.getTempC(sensor1);
+     temp_2+=ds.getTempC(sensor2);
+     temp_3+=ds.getTempC(sensor3);
+     temp_4+=ds.getTempC(sensor4);
+     temp_5+=ds.getTempC(sensor5);       
+      
+    }
+    if(count>180)
+    {
+      mm = 0;
+      count = 0;
+      temp_1=0;
+      temp_2=0;
+      temp_3=0;
+      temp_4=0;
+      temp_5=0;
+    }
 }
-/*float ds_(OneWire ds)
-{
-    byte i;
-    byte present = 0;
-    byte type_s;
-    byte data[12];
-    byte addr[8];
-    float celsius, fahrenheit;
-  
-    if ( !ds.search(addr)) {
-      ds.reset_search();
-      delay(250);
-      return;
-    }
-  
-  if (OneWire::crc8(addr, 7) != addr[7]) {
-      //Serial.println("CRC is not valid!");
-      Str+="CRC is not valid!";
-      Str+=';';
-      return;
-  }
-  
-  //delay(1000);     // maybe 750ms is enough, maybe not
-  // we might do a ds.depower() here, but the reset will take care of it.
-    present = ds.reset();
-    ds.select(addr);    
-    ds.write(0xBE);         // Read Scratchpad
-  for ( i = 0; i < 9; i++) {           // we need 9 bytes
-    data[i] = ds.read();
-  }
 
-  // Convert the data to actual temperature
-  // because the result is a 16 bit signed integer, it should
-  // be stored to an "int16_t" type, which is always 16 bits
-  // even when compiled on a 32 bit processor.
-  int16_t raw = (data[1] << 8) | data[0];
-  if (type_s) {
-    raw = raw << 3; // 9 bit resolution default
-    if (data[7] == 0x10) {
-      // "count remain" gives full 12 bit resolution
-      raw = (raw & 0xFFF0) + 12 - data[6];
-    }
-  } else {
-    byte cfg = (data[4] & 0x60);
-    // at lower res, the low bits are undefined, so let's zero them
-    if (cfg == 0x00) raw = raw & ~7;  // 9 bit resolution, 93.75 ms
-    else if (cfg == 0x20) raw = raw & ~3; // 10 bit res, 187.5 ms
-    else if (cfg == 0x40) raw = raw & ~1; // 11 bit res, 375 ms
-    //// default is 12 bit resolution, 750 ms conversion time
-  }
-  celsius = (float)raw / 16.0;
-  //Serial.print(" DS18B20 Temperature = ");
-  //Serial.print(celsius);
- // Serial.println(" Celsius");
-  //Serial.println();
-  return(celsius);
-}*/
 
 
